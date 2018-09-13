@@ -1,0 +1,47 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : apb2spi_top_base_virtual_seq.sv
+// Developer  : Adrian Milakovic
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef APB2SPI_TOP_BASE_VIRTUAL_SEQ_SV
+`define APB2SPI_TOP_BASE_VIRTUAL_SEQ_SV
+
+// base virtual sequence
+class apb2spi_top_base_virtual_seq extends uvm_sequence;
+
+  // registration macro
+  `uvm_object_utils(apb2spi_top_base_virtual_seq)
+  
+  // declare p_sequencer
+  `uvm_declare_p_sequencer(apb2spi_top_virtual_sequencer)
+  
+  // sequences
+  apb_uvc_master_seq            apb_random_seq;
+  spi_uvc_master_seq            spi_seq;
+  apb_uvc_master_write_seq      apb_write_seq;
+  apb_uvc_master_read_seq       apb_read_seq;
+  rst_uvc_master_seq            rst_seq;
+  
+  // constructor  
+  extern function new(string name = "apb2spi_top_base_virtual_seq");
+
+endclass : apb2spi_top_base_virtual_seq
+
+// constructor
+function apb2spi_top_base_virtual_seq::new(string name = "apb2spi_top_base_virtual_seq");
+  super.new(name);
+  apb_random_seq = apb_uvc_master_seq::type_id::create("apb_random_seq");
+  spi_seq    =     spi_uvc_master_seq::type_id::create("spi_seq");
+  apb_write_seq =  apb_uvc_master_write_seq::type_id::create("apb_write_seq");
+  apb_read_seq =   apb_uvc_master_read_seq::type_id::create("apb_read_seq");
+  rst_seq =        rst_uvc_master_seq::type_id::create("rst_seq");
+endfunction : new
+
+`endif // APB2SPI_TOP_BASE_VIRTUAL_SEQ_SV

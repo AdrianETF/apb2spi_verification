@@ -1,0 +1,504 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : apb2spi_top_scb.sv
+// Developer  : Adrian Milakovic
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef APB2SPI_TOP_SCB_SV
+`define APB2SPI_TOP_SCB_SV
+
+class apb2spi_top_scb extends uvm_scoreboard;
+  
+  // registration macro
+  `uvm_component_utils(apb2spi_top_scb)
+  
+  // analysis implementation ports
+  `uvm_analysis_imp_decl(_apb_uvc_aexport)
+  `uvm_analysis_imp_decl(_spi_uvc_aexport)
+  `uvm_analysis_imp_decl(_rst_uvc_aexport)
+  uvm_analysis_imp_apb_uvc_aexport #(apb_uvc_item, apb2spi_top_scb) m_apb_uvc_aexport;
+  uvm_analysis_imp_spi_uvc_aexport #(spi_uvc_item, apb2spi_top_scb) m_spi_uvc_aexport;
+  uvm_analysis_imp_rst_uvc_aexport #(rst_uvc_item, apb2spi_top_scb) m_rst_uvc_aexport;
+  
+  // configuration reference
+  apb2spi_top_cfg_top m_cfg;
+  
+  // register model reference
+  apb2spi_register_model reg_mod;
+
+  // receive and transmit buffers
+  bit[31:0] receive_buffer[$];
+  bit[31:0] transmit_buffer[$];
+  bit [31:0] transmitted_data;
+
+  // coverage groups
+  covergroup ctrl0_cg;
+    option.per_instance = 1;
+
+   cp_DSIZ: coverpoint reg_mod.spi_ctrl0.data.DSIZ {
+     bins min_size = {3};
+     bins small_size = {[4:10]};
+     bins medium_size = {[11:20]};
+     bins large_size = {[21:30]};
+     bins max_size = {31};
+   }
+
+   cp_DORD: coverpoint reg_mod.spi_ctrl0.data.DORD {
+     bins MSB = {0};
+     bins LSB = {1};
+   }
+
+   cp_DIR: coverpoint reg_mod.spi_ctrl0.data.DIR {
+     bins receive = {2'b01};
+     bins transmit = {2'b10};
+   }
+
+   cp_FLUSHR: coverpoint reg_mod.spi_ctrl0.data.FLUSHR {
+     bins no_flush = {0};
+     bins yes_flush = {1};
+   }
+ 
+   cp_FLUSHT: coverpoint reg_mod.spi_ctrl0.data.FLUSHT {
+     bins no_flush = {0};
+     bins yes_flush = {1};
+   }
+
+   cp_SPIEN: coverpoint reg_mod.spi_ctrl0.data.SPIEN {
+     bins disabled = {0};
+     bins enabled = {1};
+   }
+  
+   cp_SSINSEL_0: coverpoint reg_mod.spi_ctrl1.data.SSINSEL {
+     bins ssinsel_0 = {0};
+     bins ssinsel_1 = {1};
+     bins ssinsel_2 = {2};
+     bins ssinsel_3 = {3};
+     bins ssinsel_4 = {4};
+     bins ssinsel_5 = {5};
+     bins ssinsel_6 = {6};
+     bins ssinsel_7 = {7};
+   }
+
+   cp_DIR_cross_SSINSEL : cross cp_SSINSEL_0, cp_DIR;
+
+   cp_DIR_cross_DORD : cross cp_DIR, cp_DORD;
+
+   cp_DSIZ_cross_DORD : cross cp_DSIZ, cp_DORD;
+ 
+   cp_DIR_cross_DSIZ : cross cp_DIR, cp_DSIZ;
+
+   cp_DIR_cross_DORD_cross_DSIZ : cross cp_DIR, cp_DORD, cp_DSIZ;
+
+  endgroup : ctrl0_cg
+
+  covergroup ctrl1_cg;
+    option.per_instance = 1;
+
+   cp_SSCG: coverpoint reg_mod.spi_ctrl1.data.SSCG {
+     bins small_cg = {4'b0001, 4'b0010, 4'b0011};
+     bins medium_cg = {4'b0100, 4'b0101, 4'b0110, 4'b0111, 4'b1000, 4'b1001, 4'b1010};
+     bins large_cg = {4'b1011, 4'b1100, 4'b1101, 4'b1110, 4'b1111};
+   }
+
+   cp_SSINSEL: coverpoint reg_mod.spi_ctrl1.data.SSINSEL {
+     bins ssinsel_0 = {0};
+     bins ssinsel_1 = {1};
+     bins ssinsel_2 = {2};
+     bins ssinsel_3 = {3};
+     bins ssinsel_4 = {4};
+     bins ssinsel_5 = {5};
+     bins ssinsel_6 = {6};
+     bins ssinsel_7 = {7};
+   }
+
+   cp_SSEN0: coverpoint reg_mod.spi_ctrl1.data.SSEN[0] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+   cp_SSEN1: coverpoint reg_mod.spi_ctrl1.data.SSEN[1] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+   cp_SSEN2: coverpoint reg_mod.spi_ctrl1.data.SSEN[2] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+   cp_SSEN3: coverpoint reg_mod.spi_ctrl1.data.SSEN[3] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+   cp_SSEN4: coverpoint reg_mod.spi_ctrl1.data.SSEN[4] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+   cp_SSEN5: coverpoint reg_mod.spi_ctrl1.data.SSEN[5] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+   cp_SSEN6: coverpoint reg_mod.spi_ctrl1.data.SSEN[6] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+   cp_SSEN7: coverpoint reg_mod.spi_ctrl1.data.SSEN[7] {
+     bins ssen_not = {0};
+     bins ssen = {1};
+   }
+
+  endgroup : ctrl1_cg
+
+  covergroup stat0_cg;
+    option.per_instance = 1;
+
+   SPIxSTAT0_RFF_cov: coverpoint reg_mod.spi_stat0.data.RFF {
+     bins Rfifo_not_full = {0};
+     bins Rfifo_full = {1};
+   }
+
+   SPIxSTAT0_RNE_cov: coverpoint reg_mod.spi_stat0.data.RNE {
+     bins Rfifo_is_empty = {0};
+     bins Rfifo_not_empty = {1};
+   }
+ 
+   SPIxSTAT0_TNFFF_cov: coverpoint reg_mod.spi_stat0.data.TNF {
+     bins Tfifo_is_full = {0};
+     bins Tfifo_not_full = {1};
+   }
+
+   SPIxSTAT0_TFE_cov: coverpoint reg_mod.spi_stat0.data.TFE {
+     bins Tfifo_not_empty = {0};
+     bins Tfifo_empty = {1};
+   }
+
+  endgroup : stat0_cg
+
+  covergroup rst_cg;
+    option.per_instance = 1;
+
+   rst_spien_cov: coverpoint reg_mod.spi_ctrl0.data.SPIEN {
+     bins disabled = {0};
+     bins enabled = {1};
+   }
+
+   rst_dir_cov: coverpoint reg_mod.spi_ctrl0.data.DIR {
+     bins receive = {2'b01};
+     bins transmit = {2'b10};
+   }
+
+  endgroup : rst_cg
+
+  // cloned UVCs items
+  apb_uvc_item m_apb_uvc_item_clone;
+  spi_uvc_item m_spi_uvc_item_clone;
+  rst_uvc_item m_rst_uvc_item_clone;
+  
+  // constructor
+  extern function new(string name, uvm_component parent);
+  // build phase
+  extern virtual function void build_phase(uvm_phase phase);
+  // analysis implementation ports' functions
+  extern virtual function write_apb_uvc_aexport(apb_uvc_item item);
+  extern virtual function write_spi_uvc_aexport(spi_uvc_item item);
+  extern virtual function write_rst_uvc_aexport(rst_uvc_item item);
+  // my functions
+  extern function void check_read_data(bit[31:0] item_rdata, bit[31:0] reg_rdata, bit[31:0] reg_type);
+  extern function void check_write_data(bit[31:0] item_wdata, bit[3:0] item_strobe);
+  extern function void check_slave_error(bit slverr);
+  extern function void status_transmit_update(bit[1:0] direction);
+
+endclass : apb2spi_top_scb
+
+// constructor
+function apb2spi_top_scb::new(string name, uvm_component parent);
+  super.new(name, parent);
+  reg_mod = new();
+  reg_mod.reset_registers();
+  // create coverage groups
+  ctrl0_cg = new();
+  ctrl1_cg = new();
+  stat0_cg = new();
+  rst_cg = new();
+endfunction : new
+
+// build phase
+function void apb2spi_top_scb::build_phase(uvm_phase phase);
+  super.build_phase(phase);
+  
+  // create ports
+  m_apb_uvc_aexport = new("m_apb_uvc_aexport", this);
+  m_spi_uvc_aexport = new("m_spi_uvc_aexport", this);
+  m_rst_uvc_aexport = new("m_rst_uvc_aexport", this);
+
+endfunction : build_phase
+
+function void apb2spi_top_scb::check_read_data(bit[31:0] item_rdata, bit[31:0] reg_rdata, bit[31:0] reg_type);
+
+  if(reg_type == SPI_DAT_ADDR) begin
+    if(reg_mod.spi_stat0.data.RXBEC == 0) begin
+      reg_rdata = 32'hFFFFFFFF;
+    end else begin
+      reg_rdata = receive_buffer.pop_back();
+    end
+  end
+  // registers_chk
+  if(item_rdata == reg_rdata) begin
+    case(reg_type)
+      SPI_CAP_ADDR:	`uvm_info(get_type_name(), $sformatf("CAP REG    - CHECK OK : DATA READ = %h", item_rdata), UVM_LOW)
+      SPI_CTRL0_ADDR:	`uvm_info(get_type_name(), $sformatf("CTRL0 REG  - CHECK OK : DATA READ = %h", item_rdata), UVM_LOW)
+      SPI_CTRL1_ADDR:	`uvm_info(get_type_name(), $sformatf("CTRL1 REG  - CHECK OK : DATA READ = %h", item_rdata), UVM_LOW)
+      SPI_STAT0_ADDR:	`uvm_info(get_type_name(), $sformatf("STAT0 REG  - CHECK OK : DATA READ = %h", item_rdata), UVM_LOW)
+      SPI_DAT_ADDR:	`uvm_info(get_type_name(), $sformatf("DAT REG    - CHECK OK : DATA READ = %h", item_rdata), UVM_LOW)
+      SPI_CPSR_ADDR:	`uvm_info(get_type_name(), $sformatf("CPSR REG   - CHECK OK : DATA READ = %h", item_rdata), UVM_LOW)
+    endcase
+  end else begin
+    case(reg_type)
+      SPI_CAP_ADDR:	`uvm_error(get_type_name(), $sformatf("CAP REG    - CHECK NOK : DATA (DUT/REGMOD) = (%h/%h)", item_rdata, reg_rdata))
+      SPI_CTRL0_ADDR:	`uvm_error(get_type_name(), $sformatf("CTRL0 REG  - CHECK NOK : DATA (DUT/REGMOD) = (%h/%h)", item_rdata, reg_rdata))
+      SPI_CTRL1_ADDR:	`uvm_error(get_type_name(), $sformatf("CTRL1 REG  - CHECK NOK : DATA (DUT/REGMOD) = (%h/%h)", item_rdata, reg_rdata))
+      SPI_STAT0_ADDR:	`uvm_error(get_type_name(), $sformatf("STAT0 REG  - CHECK NOK : DATA (DUT/REGMOD) = (%h/%h)", item_rdata, reg_rdata))
+      SPI_DAT_ADDR:	`uvm_error(get_type_name(), $sformatf("DAT REG    - CHECK NOK : DATA (DUT/REGMOD) = (%h/%h)", item_rdata, reg_rdata))
+      SPI_CPSR_ADDR:	`uvm_error(get_type_name(), $sformatf("CPSR REG   - CHECK NOK : DATA (DUT/REGMOD) = (%h/%h)", item_rdata, reg_rdata))
+    endcase
+  end
+endfunction : check_read_data
+
+function void apb2spi_top_scb::check_slave_error(bit slverr);
+  //slave_error_chk
+  if(slverr == 1'b1) begin
+    `uvm_info(get_type_name(), $sformatf("CHECK OK : READ FROM INVALID ADDRESS AND ERROR RETURNED"), UVM_LOW)
+  end else begin
+    `uvm_error(get_type_name(), $sformatf("CHECK NOK : READ FROM INVALID ADDRESS BUT ERROR NOT RETURNED"))
+  end
+endfunction : check_slave_error
+
+function void apb2spi_top_scb::status_transmit_update(bit[1:0] direction);
+
+  ///// DIRECTION == 01 --> TRANSMIT +
+  ///// DIRECTION == 00 --> RECEIVE  +
+  ///// DIRECTION == 11 --> TRANSMIT -
+  ///// DIRECTION == 10 --> RECEIVE  -
+  `uvm_info(get_type_name(), $sformatf("----------------- STATUS UPDATE -----------------"), UVM_LOW)
+  
+  case(direction)
+    2'b01: begin
+	    if(reg_mod.spi_stat0.data.TXBEC == 64) begin
+	      reg_mod.spi_stat0.data.TNF = 0;
+	    end else begin
+	      reg_mod.spi_stat0.data.TXBEC++;
+              if(reg_mod.spi_stat0.data.TXBEC == 64) begin
+	        reg_mod.spi_stat0.data.TNF = 0;
+	      end
+              reg_mod.spi_stat0.data.TFE = 0;
+              reg_mod.spi_stat0.data.BSY = 1;
+	    end
+           end
+    2'b00: begin
+            reg_mod.spi_stat0.data.RNE = 1;
+	    if(reg_mod.spi_stat0.data.RXBEC == 64) begin
+	      reg_mod.spi_stat0.data.RFF = 1;
+	    end else begin
+	      reg_mod.spi_stat0.data.RXBEC++;
+              if(reg_mod.spi_stat0.data.RXBEC == 64) begin
+	        reg_mod.spi_stat0.data.RFF = 1;
+	      end
+	    end
+           end
+
+    2'b11: begin
+            reg_mod.spi_stat0.data.TNF = 1;
+	    if(reg_mod.spi_stat0.data.TXBEC == 0) begin
+	      reg_mod.spi_stat0.data.TFE = 1;
+	      reg_mod.spi_stat0.data.BSY = 0;
+	    end else begin
+	      reg_mod.spi_stat0.data.TXBEC--;
+	      if(reg_mod.spi_stat0.data.TXBEC == 0) begin
+	        reg_mod.spi_stat0.data.TFE = 1;
+	        reg_mod.spi_stat0.data.BSY = 0;
+	      end
+	    end
+           end
+
+    2'b10: begin
+            reg_mod.spi_stat0.data.RFF = 0;
+	    if(reg_mod.spi_stat0.data.RXBEC == 0) begin
+	      reg_mod.spi_stat0.data.RNE = 0;
+	    end else begin
+              reg_mod.spi_stat0.data.RXBEC--;
+              if(reg_mod.spi_stat0.data.RXBEC == 0) begin
+	        reg_mod.spi_stat0.data.RNE = 0;
+	      end
+            end
+           end
+  endcase
+
+  
+endfunction : status_transmit_update
+
+function void apb2spi_top_scb::check_write_data(bit[31:0] item_wdata, bit[3:0] item_strobe);
+  if(reg_mod.spi_ctrl0.data.DIR == 2'b10) begin
+    case(item_strobe)
+      1:  item_wdata = item_wdata & 32'h000000ff;
+      2:  item_wdata = item_wdata & 32'h0000ff00;
+      3:  item_wdata = item_wdata & 32'h0000ffff;
+      4:  item_wdata = item_wdata & 32'h00ff0000;
+      8:  item_wdata = item_wdata & 32'hff000000;
+      12: item_wdata = item_wdata & 32'hffff0000;
+      15: item_wdata = item_wdata & 32'hffffffff;
+    endcase
+    for(int i = reg_mod.spi_ctrl0.data.DSIZ + 1; i < 32; i++) begin
+      item_wdata[i] = 0;
+    end
+    status_transmit_update(2'b01);
+    transmit_buffer.push_front(item_wdata);
+  end
+endfunction : check_write_data
+
+// analysis implementation port function
+function apb2spi_top_scb::write_apb_uvc_aexport(apb_uvc_item item);
+  `uvm_info(get_type_name(), "APB item received.", UVM_LOW)
+   if (!$cast(m_apb_uvc_item_clone, item.clone())) begin
+     `uvm_fatal(get_type_name(), "Failed to cast apb_uvc_item.")
+   end
+   if(m_apb_uvc_item_clone.pwrite == 1'b0) begin
+     case(item.paddr)
+       SPI_CAP_ADDR:    check_read_data(m_apb_uvc_item_clone.prdata, reg_mod.spi_cap_data_read(), SPI_CAP_ADDR);
+       SPI_CTRL0_ADDR:  check_read_data(m_apb_uvc_item_clone.prdata, reg_mod.spi_ctrl0_data_read(), SPI_CTRL0_ADDR);
+       SPI_CTRL1_ADDR:  check_read_data(m_apb_uvc_item_clone.prdata, reg_mod.spi_ctrl1_data_read(), SPI_CTRL1_ADDR);
+       SPI_STAT0_ADDR:  check_read_data(m_apb_uvc_item_clone.prdata, reg_mod.spi_stat0_data_read(), SPI_STAT0_ADDR);
+       SPI_DAT_ADDR:    begin
+                          check_read_data(m_apb_uvc_item_clone.prdata, reg_mod.spi_dat_data_read(), SPI_DAT_ADDR);
+                          if(reg_mod.spi_ctrl0.data.DIR == 2'b01) begin
+                            status_transmit_update(2'b10);
+                          end
+                        end
+       SPI_CPSR_ADDR:   check_read_data(m_apb_uvc_item_clone.prdata, reg_mod.spi_cpsr_data_read(), SPI_CPSR_ADDR);
+       SPI_DMAREQ_ADDR: ;
+       SPI_IE_ADDR:     ;
+       SPI_IRS_ADDR:    ;
+       SPI_IMS_ADDR:    ;
+       SPI_ICR_ADDR:    ;
+       SPI_IX_ADDR:     ;
+       default: check_slave_error(m_apb_uvc_item_clone.pslverr);
+     endcase
+   end else begin
+     case(m_apb_uvc_item_clone.paddr)
+       SPI_CAP_ADDR:    ;
+       SPI_CTRL0_ADDR:  begin
+                             if(((reg_mod.spi_ctrl0.data.DIR != m_apb_uvc_item_clone.pwdata[5:4]) && m_apb_uvc_item_clone.pstrb[0] == 1) || (reg_mod.spi_ctrl0.data.DSIZ != m_apb_uvc_item_clone.pwdata[12:8])) begin
+                               if(reg_mod.spi_ctrl0.data.DIR == 2'b01) begin
+                                 receive_buffer.delete();
+			         reg_mod.spi_stat0.data.RXBEC = 0;
+			         reg_mod.spi_stat0.data.RFF = 0;
+			         reg_mod.spi_stat0.data.RNE = 0;
+                                 reg_mod.spi_stat0.data.BSY = 0;
+                               end
+                               if(reg_mod.spi_ctrl0.data.DIR == 2'b10) begin
+                                 transmit_buffer.delete();
+			         reg_mod.spi_stat0.data.TXBEC = 0;
+			         reg_mod.spi_stat0.data.TFE = 1;
+			         reg_mod.spi_stat0.data.TNF = 1;
+			         reg_mod.spi_stat0.data.BSY = 0;
+                               end
+                             end
+			     reg_mod.spi_data_write(m_apb_uvc_item_clone.pwdata, m_apb_uvc_item_clone.pstrb, SPI_CTRL0_ADDR);
+			     if(reg_mod.spi_ctrl0.data.FLUSHT == 1) begin 
+			       transmit_buffer.delete();
+			       reg_mod.spi_stat0.data.TXBEC = 0;
+			       reg_mod.spi_stat0.data.TFE = 1;
+			       reg_mod.spi_stat0.data.TNF = 1;
+			       reg_mod.spi_stat0.data.BSY = 0;
+			     end
+			     if(reg_mod.spi_ctrl0.data.FLUSHR == 1) begin
+			       receive_buffer.delete();
+			       reg_mod.spi_stat0.data.RXBEC = 0;
+			       reg_mod.spi_stat0.data.RFF = 0;
+			       reg_mod.spi_stat0.data.RNE = 0;
+			     end
+			     ctrl0_cg.sample();
+			     reg_mod.spi_ctrl0.data.FLUSHT = 0;
+			     reg_mod.spi_ctrl0.data.FLUSHR = 0;
+			     m_cfg.m_spi_uvc_cfg.m_master_agent_cfg.data_size = reg_mod.spi_ctrl0.data.DSIZ + 1;
+                        end
+       SPI_CTRL1_ADDR:  begin
+                          reg_mod.spi_data_write(m_apb_uvc_item_clone.pwdata, m_apb_uvc_item_clone.pstrb, SPI_CTRL1_ADDR);
+                          m_cfg.m_spi_uvc_cfg.m_master_agent_cfg.clk_gap   = reg_mod.spi_ctrl1.data.SSCG;
+                          m_cfg.m_spi_uvc_cfg.m_master_agent_cfg.ssinsel   = reg_mod.spi_ctrl1.data.SSINSEL;
+                          ctrl1_cg.sample();
+                        end
+       SPI_STAT0_ADDR:  ;
+       SPI_DAT_ADDR:    check_write_data(m_apb_uvc_item_clone.pwdata, m_apb_uvc_item_clone.pstrb);
+       SPI_CPSR_ADDR:   begin
+			     reg_mod.spi_data_write(m_apb_uvc_item_clone.pwdata, m_apb_uvc_item_clone.pstrb, SPI_CPSR_ADDR);
+			     m_cfg.m_spi_uvc_cfg.m_master_agent_cfg.clock_multiplier = reg_mod.spi_cpsr.data.SCDIV1 * reg_mod.spi_cpsr.data.SCDIV2;
+                        end
+       SPI_DMAREQ_ADDR: ;
+       SPI_IE_ADDR:     ;
+       SPI_IRS_ADDR:    ;
+       SPI_IMS_ADDR:    ;
+       SPI_ICR_ADDR:    ;
+       SPI_IX_ADDR:     ;
+       default: check_slave_error(m_apb_uvc_item_clone.pslverr);
+     endcase
+     stat0_cg.sample();
+   end
+
+endfunction : write_apb_uvc_aexport
+
+// analysis implementation port function
+function apb2spi_top_scb::write_spi_uvc_aexport(spi_uvc_item item);
+  `uvm_info(get_type_name(), $sformatf("SPI item received - R - %h ; T - %h", item.shift_buffer_rec, item.shift_buffer_trans), UVM_LOW)
+   if (!$cast(m_spi_uvc_item_clone, item.clone())) begin
+     `uvm_fatal(get_type_name(), "Failed to cast spi_uvc_item.")
+   end
+   transmitted_data = transmit_buffer.pop_back();
+
+   // transmit_buffer_chk
+
+   if(reg_mod.spi_ctrl0.data.DIR == 2'b10) begin
+     status_transmit_update(2'b11);
+     if(reg_mod.spi_ctrl0.data.DORD == 0) begin
+       for(int i = 0; i < (reg_mod.spi_ctrl0.data.DSIZ + 1) / 2; i++) begin
+         transmitted_data[i] ^= transmitted_data[reg_mod.spi_ctrl0.data.DSIZ - i];
+         transmitted_data[reg_mod.spi_ctrl0.data.DSIZ - i] ^= transmitted_data[i];
+         transmitted_data[i] ^= transmitted_data[reg_mod.spi_ctrl0.data.DSIZ - i];
+       end
+     end
+     if(m_spi_uvc_item_clone.shift_buffer_rec == transmitted_data) begin
+      `uvm_info(get_type_name(), $sformatf("SPI DATA ARRIVED - CHECK OK : DATA RECEIVED FROM DUT = %h", m_spi_uvc_item_clone.shift_buffer_rec), UVM_LOW)
+     end else begin
+      `uvm_error(get_type_name(), $sformatf("SPI DATA ARRIVED - CHECK NOK : DATA (DUT/REGMOD) = (%h/%h)", m_spi_uvc_item_clone.shift_buffer_rec, transmitted_data))
+     end
+   end else if(reg_mod.spi_ctrl0.data.DIR == 2'b01) begin
+
+     // receive_buffer_chk
+
+     status_transmit_update(2'b00);
+     receive_buffer.push_front(m_spi_uvc_item_clone.shift_buffer_trans);
+   end
+   stat0_cg.sample();
+endfunction : write_spi_uvc_aexport
+
+function apb2spi_top_scb::write_rst_uvc_aexport(rst_uvc_item item);
+  `uvm_info(get_type_name(), "RST item received.", UVM_LOW)
+   if (!$cast(m_rst_uvc_item_clone, item.clone())) begin
+     `uvm_fatal(get_type_name(), "Failed to cast spi_uvc_item.")
+   end
+   rst_cg.sample();
+   reg_mod.reset_registers();
+   transmit_buffer.delete();
+   receive_buffer.delete();
+endfunction : write_rst_uvc_aexport
+
+`endif // APB2SPI_TOP_SCB_SV
