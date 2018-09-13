@@ -1,0 +1,12 @@
+
+`ifndef RST_UVC_IF_SV
+`define RST_UVC_IF_SV
+
+interface rst_uvc_if(input clock, inout reset_n);
+  
+  `include "uvm_macros.svh"
+  import uvm_pkg::*;
+  
+endinterface : rst_uvc_if
+
+`endif // RST_UVC_IF_SV

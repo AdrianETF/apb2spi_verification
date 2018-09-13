@@ -1,0 +1,42 @@
+
+
+`ifndef RST_UVC_CFG_SV
+`define RST_UVC_CFG_SV
+
+class rst_uvc_cfg extends uvm_object;
+  
+  // agents configurations
+  rst_uvc_agent_cfg m_agent_cfg;
+  bit m_has_monitor;
+  bit m_has_coverage;
+  bit m_has_two_agents;
+  
+  // registration macro
+  `uvm_object_utils_begin(rst_uvc_cfg)
+    `uvm_field_object(m_master_agent_cfg, UVM_ALL_ON)
+    `uvm_field_object(m_slave_agent_cfg, UVM_ALL_ON)
+    `uvm_field_int(m_has_monitor, UVM_ALL_ON)
+    `uvm_field_int(m_has_coverage, UVM_ALL_ON)
+    `uvm_field_int(m_has_two_agents, UVM_ALL_ON)
+  `uvm_object_utils_end
+  
+  // constructor   
+  extern function new(string name = "rst_uvc_cfg");
+    
+endclass : rst_uvc_cfg
+
+// constructor
+function rst_uvc_cfg::new(string name = "rst_uvc_cfg");
+  super.new(name);
+
+  // default values
+  m_has_monitor = 1;
+  m_has_coverage = 1;
+  m_has_two_agents = 0;
+
+  // create agents configurations
+  m_master_agent_cfg = rst_uvc_agent_cfg::type_id::create("m_master_agent_cfg");
+  m_slave_agent_cfg = rst_uvc_agent_cfg::type_id::create("m_slave_agent_cfg");
+endfunction : new
+
+`endif // RST_UVC_CFG_SV
