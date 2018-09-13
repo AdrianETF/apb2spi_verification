@@ -1,0 +1,48 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2017 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : apb_uvc_sequencer.sv
+// Developer  : Milan Bjelobrk
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef APB_UVC_SEQUENCER_SV
+`define APB_UVC_SEQUENCER_SV
+
+class apb_uvc_sequencer extends uvm_sequencer #(apb_uvc_item);
+
+  //DODATO
+  uvm_analysis_export #(apb_uvc_item) m_request_export;
+  uvm_tlm_analysis_fifo #(apb_uvc_item) m_request_fifo;
+  
+  // registration macro
+  `uvm_component_utils(apb_uvc_sequencer)
+    
+  // configuration reference
+  apb_uvc_agent_cfg m_cfg;
+  
+  // constructor    
+  extern function new(string name, uvm_component parent);
+  // build phase
+  extern virtual function void build_phase(uvm_phase phase);
+  
+endclass : apb_uvc_sequencer
+
+// constructor
+function apb_uvc_sequencer::new(string name, uvm_component parent);
+  super.new(name, parent);
+  m_request_fifo = new("m_request_fifo", this);
+  m_request_export = new("m_request_export", this);
+endfunction : new
+
+// build phase
+function void apb_uvc_sequencer::build_phase(uvm_phase phase);
+  super.build_phase(phase);
+  m_request_export.connect(m_request_fifo.analysis_export);
+endfunction : build_phase
+
+`endif // APB_UVC_SEQUENCER_SV
