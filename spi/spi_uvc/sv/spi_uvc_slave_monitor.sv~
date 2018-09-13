@@ -1,0 +1,133 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : spi_uvc_slave_monitor.sv
+// Developer  : Jovana Toroman
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef SPI_UVC_SLAVE_MONITOR_SV
+`define SPI_UVC_SLAVE_MONITOR_SV
+
+class spi_uvc_slave_monitor #(SLAVE_NUM = 0) extends uvm_monitor;
+  
+  event cont;  
+  bit[31:0] receive_buffer;
+  bit[31:0] transmit_buffer;
+  int num;
+
+  // registration macro
+  `uvm_component_utils(spi_uvc_slave_monitor)
+  
+  // analysis port
+  uvm_analysis_port #(spi_uvc_item) m_aport;
+  
+  // virtual interface reference
+  virtual interface spi_uvc_if m_vif;
+  
+  // configuration reference
+  spi_uvc_agent_cfg m_cfg;
+  
+  // monitor item
+  spi_uvc_item m_item;
+  // constructor
+  extern function new(string name, uvm_component parent);
+  // build phase
+  extern virtual function void build_phase(uvm_phase phase);
+  // run phase
+  extern virtual task run_phase(uvm_phase phase);
+  // handle reset
+  extern virtual task handle_reset();
+  // collect item
+  extern virtual task collect_item();
+  // wait for end of transfer
+  extern virtual task wait_for_end();
+  // print item
+  extern virtual function void print_item(spi_uvc_item item);
+
+endclass : spi_uvc_slave_monitor
+
+// constructor
+function spi_uvc_slave_monitor::new(string name, uvm_component parent);
+  super.new(name, parent);
+endfunction : new
+
+// build phase
+function void spi_uvc_slave_monitor::build_phase(uvm_phase phase);
+  super.build_phase(phase);
+  
+  // create port
+  m_aport = new("m_aport", this);
+  
+  // create item
+  m_item = spi_uvc_item::type_id::create("m_item", this);
+endfunction : build_phase
+
+// connect phase
+task spi_uvc_slave_monitor::run_phase(uvm_phase phase);
+  super.run_phase(phase);
+  
+  forever begin
+    fork : run_phase_fork_block
+      begin
+        handle_reset();
+      end
+      begin
+        collect_item();    
+      end
+      begin
+        wait_for_end();    
+      end
+    join_any // run_phase_fork_block
+    disable fork;
+  end
+endtask : run_phase
+
+task spi_uvc_slave_monitor::handle_reset();
+  @(posedge m_vif.reset_n);
+	->cont;
+  @(negedge m_vif.reset_n);
+  `	uvm_info(get_type_name(), "Reset asserted.", UVM_HIGH)
+endtask : handle_reset
+
+// collect item
+task spi_uvc_slave_monitor::collect_item();
+
+  @cont; 
+  `uvm_info(get_type_name(), "Reset de-asserted. Starting to collect items...", UVM_HIGH)
+  num=0;
+  forever begin   
+    @(posedge(m_vif.SCK) iff m_vif.SS_N[SLAVE_NUM] == 1'b0) 
+	receive_buffer[num]=m_vif.MOSI;
+	transmit_buffer[num++]=m_vif.MISO;
+  end // forever begin  
+endtask : collect_item
+
+task spi_uvc_slave_monitor:: wait_for_end();
+  @cont; 
+  num=0;
+  forever begin   
+    @(posedge(m_vif.SS_N[SLAVE_NUM]) )
+      	m_item.shift_buffer_rec=receive_buffer;
+      	m_item.shift_buffer_trans=transmit_buffer;
+	m_item.data_size=num;
+	num=0;
+    	print_item(m_item);
+        m_aport.write(m_item);  
+	for(int i=0;i< 32;i++) begin
+	  receive_buffer[i]=0;
+	  transmit_buffer[i]=0;
+	end
+  end // forever begin  
+endtask :  wait_for_end
+
+// print item
+function void spi_uvc_slave_monitor::print_item(spi_uvc_item item);
+  `uvm_info(get_type_name(), $sformatf("Item collected: \n%s", item.sprint()), UVM_HIGH)
+endfunction : print_item
+
+`endif // SPI_UVC_SLAVE_MONITOR_SV

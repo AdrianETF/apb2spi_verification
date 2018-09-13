@@ -1,0 +1,62 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : spi_uvc_if.sv
+// Developer  : Adrian Milakovic
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef SPI_UVC_IF_SV
+`define SPI_UVC_IF_SV
+
+interface spi_uvc_if(input clock, input reset_n);
+  
+  `include "uvm_macros.svh"
+  import uvm_pkg::*;
+  
+  // signals
+
+  logic       MOSI;
+  logic       MISO;
+  logic       SCK;
+  logic[7:0]  SS_N;
+  
+  // assertions
+
+  property spi_mosi_chk_prop;
+    @(posedge clock) 
+    disable iff (!reset_n)
+    SS_N != 8'b11111111 |-> !$isunknown(MOSI) ;
+  endproperty: spi_mosi_chk_prop
+
+  property spi_sck_chk_prop;
+    @(posedge clock) 
+    disable iff (!reset_n)
+    SS_N != 8'b11111111 |-> !$isunknown(SCK) ;
+  endproperty: spi_sck_chk_prop
+
+  property spi_rose_stable_mosi_chk_prop;
+    @(posedge clock) 
+    disable iff (!reset_n)
+    $rose(SCK) |-> $stable(MOSI) ;
+  endproperty: spi_rose_stable_mosi_chk_prop
+
+  spi_mosi_not_unknown_chk : assert property (spi_mosi_chk_prop) else begin
+    `uvm_error("spi_uvc_if", "X value detected on signal 'mosi'.")
+  end
+
+  spi_sck_not_unknown_chk : assert property (spi_sck_chk_prop) else begin
+    `uvm_error("spi_uvc_if", "X value detected on signal 'sck'.")
+  end
+
+  spi_rose_stable_mosi_chk : assert property (spi_rose_stable_mosi_chk_prop) else begin
+    `uvm_error("spi_uvc_if", "'mosi' signal was not stable at the rising edge of SCK.")
+  end
+  
+endinterface : spi_uvc_if
+
+`endif // SPI_UVC_IF_SV

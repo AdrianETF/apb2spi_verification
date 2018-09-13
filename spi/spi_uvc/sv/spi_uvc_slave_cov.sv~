@@ -1,0 +1,72 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : spi_uvc_slave_cov.sv
+// Developer  : Jovana Toroman
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef SPI_UVC_SLAVE_COV_SV
+`define SPI_UVC_SLAVE_COV_SV
+
+class spi_uvc_slave_cov extends uvm_subscriber #(spi_uvc_item);
+  
+  // registration macro
+  `uvm_component_utils(spi_uvc_slave_cov)
+  
+  // configuration reference
+  spi_uvc_agent_cfg m_cfg;
+  
+  // coverage fields 
+  spi_uvc_item m_item;
+  
+  // coverage groups
+  covergroup spi_uvc_cg;
+    option.per_instance = 1;
+
+    cp_data_dir : coverpoint m_cfg.data_dir {
+      bins RECEIVE_ONLY={2'b01};
+      bins TRANSMIT_ONLY={2'b10};
+    }
+
+    cp_data_order : coverpoint m_cfg.data_order {
+      bins MSB={1'b0};
+      bins LSB={1'b1};
+    }
+
+    cp_data_size : coverpoint m_item.data_size {
+      bins SMALL={[5'b00011: 5'b01000]};
+      bins MEDIUM={[5'b01001: 5'b10000]};
+      bins LARGE={[5'b10001: 5'b11111]};
+    }
+
+   cross_data_dir_order : cross m_cfg.data_dir, m_cfg.data_order;
+
+   // coverage za ss_n
+
+  endgroup : spi_uvc_cg
+  
+  // constructor
+  extern function new(string name, uvm_component parent);
+  // analysis implementation port function
+  extern virtual function void write(spi_uvc_item t);
+
+endclass : spi_uvc_slave_cov
+
+// constructor
+function spi_uvc_slave_cov::new(string name, uvm_component parent);
+  super.new(name, parent);
+  spi_uvc_cg = new();
+endfunction : new
+
+// analysis implementation port function
+function void spi_uvc_slave_cov::write(spi_uvc_item t);
+  m_item=t;
+  spi_uvc_cg.sample();
+endfunction : write
+
+`endif // SPI_UVC_SLAVE_COV_SV

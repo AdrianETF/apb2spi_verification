@@ -1,0 +1,33 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2017 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : name_uvc_test_pkg.sv
+// Developer  : Milan Bjelobrk
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef NAME_UVC_TEST_PKG_SV
+`define NAME_UVC_TEST_PKG_SV
+
+package name_uvc_test_pkg;
+
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+
+// import UVC's packages
+import name_uvc_pkg::*;
+
+// import env package
+import name_uvc_env_top_pkg::*;
+
+// include tests
+`include "test_name_uvc_base.sv"
+`include "test_name_uvc_example.sv"
+
+endpackage : name_uvc_test_pkg
+
+`endif // NAME_UVC_TEST_PKG_SV

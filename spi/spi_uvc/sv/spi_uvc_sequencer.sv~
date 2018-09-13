@@ -1,0 +1,41 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : spi_uvc_sequencer.sv
+// Developer  : Adrian Milakovic
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef SPI_UVC_SEQUENCER_SV
+`define SPI_UVC_SEQUENCER_SV
+
+class spi_uvc_sequencer extends uvm_sequencer #(spi_uvc_item);
+  
+  // registration macro
+  `uvm_component_utils(spi_uvc_sequencer)
+    
+  // configuration reference
+  spi_uvc_master_agent_cfg m_cfg;
+  
+  // constructor    
+  extern function new(string name, uvm_component parent);
+  // build phase
+  extern virtual function void build_phase(uvm_phase phase);
+  
+endclass : spi_uvc_sequencer
+
+// constructor
+function spi_uvc_sequencer::new(string name, uvm_component parent);
+  super.new(name, parent);
+endfunction : new
+
+// build phase
+function void spi_uvc_sequencer::build_phase(uvm_phase phase);
+  super.build_phase(phase);
+endfunction : build_phase
+
+`endif // SPI_UVC_SEQUENCER_SV

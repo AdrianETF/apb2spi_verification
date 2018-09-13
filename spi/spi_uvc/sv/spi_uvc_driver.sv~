@@ -1,0 +1,111 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : spi_uvc_driver.sv
+// Developer  : Adrian Milakovic
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef SPI_UVC_DRIVER_SV
+`define SPI_UVC_DRIVER_SV
+
+class spi_uvc_driver extends uvm_driver #(spi_uvc_item);
+  
+  // registration macro
+  `uvm_component_utils(spi_uvc_driver)
+  
+  // virtual interface reference
+  virtual interface spi_uvc_if m_vif;
+  
+  // configuration reference
+  spi_uvc_agent_cfg m_cfg;
+  
+  // request item
+  REQ m_req;
+   
+  // constructor
+  extern function new(string name, uvm_component parent);
+  // build phase
+  extern virtual function void build_phase(uvm_phase phase);
+  // run phase
+  extern virtual task run_phase(uvm_phase phase);
+  // process item
+  extern virtual task process_item(spi_uvc_item item);
+  // clock generator
+  extern virtual task drive_clock();
+
+endclass : spi_uvc_driver
+
+// constructor
+function spi_uvc_driver::new(string name, uvm_component parent);
+  super.new(name, parent);
+endfunction : new
+
+// build phase
+function void spi_uvc_driver::build_phase(uvm_phase phase);
+  super.build_phase(phase);
+endfunction : build_phase
+
+task spi_uvc_driver::drive_clock();
+  forever begin
+    for(int i = 1; i < 2; i++) begin
+      @(posedge m_vif.clock);
+    end
+    m_vif.SCK <= !m_vif.SCK;
+  end
+endtask : drive_clock
+
+// run phase
+task spi_uvc_driver::run_phase(uvm_phase phase);
+  super.run_phase(phase);
+
+  // init signals
+  m_vif.signal  <= 0;
+  m_vif.MOSI    <= 1'b0;
+  m_vif.SCK     <= 1'b1;
+  m_vif.SS_N    <= 8'b11111111;
+  
+  forever begin
+    seq_item_port.get_next_item(m_req);
+    fork
+      begin
+        drive_clock();
+      end
+      begin
+        process_item(m_req);
+      end
+    join_any
+    disable fork;
+    seq_item_port.item_done();
+  end
+endtask : run_phase
+
+// process item
+task spi_uvc_driver::process_item(spi_uvc_item item);
+  // print item
+  `uvm_info(get_type_name(), $sformatf("Item to be driven: \n%s", item.sprint()), UVM_HIGH)
+  
+  // wait until reset is de-asserted
+  wait (m_vif.reset_n == 1);
+  m_vif.SS_N <= item.ss_n;
+  // drive signals
+  if(item.data_dir == 2'b01) begin
+    for(int i = 0; i < item.data_size; i++) begin
+      @(negedge m_vif.SCK);
+    end
+  end else if (item.data_dir == 2'b10) begin
+    for(int i = 0; i < item.data_size; i++) begin
+      @(negedge m_vif.SCK);
+      m_vif.MOSI <= item.shift_buffer[i];
+    end
+  end
+  @(negedge m_vif.SCK);
+  m_vif.SS_N <= 8'b11111111;
+
+endtask : process_item
+
+`endif // SPI_UVC_DRIVER_SV

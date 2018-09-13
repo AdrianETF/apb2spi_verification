@@ -1,0 +1,182 @@
+#------------------------------------------------------------------------------
+# Copyright (c) 2017 Elsys Eastern Europe
+# All rights reserved.
+#------------------------------------------------------------------------------
+# File name  : Makefile
+# Developer  : Milan Bjelobrk
+# Date       : 
+# Description: 
+# Notes      : 
+#
+#------------------------------------------------------------------------------
+
+#------------------------------
+# Common variables
+#------------------------------
+PROJECT_NAME    = spi_uvc
+BASE_DIR        = $(HOME)/projects/amilakovic/apb2spi/verif/systemverilog/uvc_lib/$(PROJECT_NAME)
+
+#------------------------------
+# Variables for simulation run
+#------------------------------
+TEST_NAME       = test_$(PROJECT_NAME)_example
+SEED            = random
+TCL_FILE        = $(PROJECT_NAME)_env_top.tcl
+VERBOSITY       = UVM_LOW
+TOP_FILE        = $(BASE_DIR)/example/$(PROJECT_NAME)_tb_top.sv
+
+#------------------------------
+# Variables for regression run
+#------------------------------
+TEST_LIST       = tests
+TEST_LIST_PATH  = $(BASE_DIR)/makefile
+REGRESS_DIR     = $(BASE_DIR)/makefile/regression_folder
+
+#------------------------------
+# Other variables and options
+#-------------------------------
+SIM = xrun
+
+INCDIRS = -incdir $(BASE_DIR)/sv \
+          -incdir $(BASE_DIR)/example
+
+PACKAGES = $(BASE_DIR)/sv/$(PROJECT_NAME)_pkg.sv \
+           $(BASE_DIR)/example/$(PROJECT_NAME)_env_top_pkg.sv \
+           $(BASE_DIR)/example/$(PROJECT_NAME)_test_pkg.sv
+
+#RTL_FILES = rtl.files
+
+OPTIONS = +UVM_VERBOSITY=$(VERBOSITY) \
+          -svseed $(SEED) \
+          -access rwc \
+          -timescale 1ns/1ns \
+          $(TOP_FILE)
+#          -file $(RTL_FILES) \
+
+RUN_TCL = +tcl+$(BASE_DIR)/makefile/$(TCL_FILE)
+
+COVERAGE_OPTIONS = -coverage all \
+                   -covoverwrite
+
+DEBUG_OPTIONS = -linedebug \
+                -uvmlinedebug
+
+#-----------------------------------------------------------
+# "Function" for running regression used by target run_regr
+#-----------------------------------------------------------
+define func_run_regression
+	@echo `(date +%d_%m_%y___%H_%M_%S)` > .tmp_time_file;\
+	$(eval current_regression = "regression_`cat .tmp_time_file`")
+	@mkdir -p $(REGRESS_DIR)/$(current_regression)
+
+	@echo
+	@echo "**********************************************************"
+	@echo "*   RUNNING REGRESSION:  $(current_regression)"
+	@echo "**********************************************************"
+	@echo "REGRESSION FOLDER LOCATION:"
+	@echo "  $(REGRESS_DIR)/$(current_regression)"
+	@echo
+	@echo "START RUNNING TESTS..."
+	@echo
+
+	@sed '/^\s*$$/d' $1 > $(REGRESS_DIR)/.tmp_no_empty_lines.vsif
+
+	@while read -r line; do \
+		echo "$$line" > $(REGRESS_DIR)/.tmp_file;\
+		$(eval test_info = `cat $(REGRESS_DIR)/.tmp_file | sed 's/ //g' | sed 's/{count.*//'`) \
+		$(eval num_of_runs_info = `cat $(REGRESS_DIR)/.tmp_file | sed 's/ //g' | sed 's/.*{count//' | sed 's/;}.*//'`) \
+		echo "Running test(s): $(test_info)"; \
+		for n in $$(seq 1 $(num_of_runs_info)); do \
+			echo "run $$n of $(num_of_runs_info)"; \
+			mkdir -p $(REGRESS_DIR)/$(current_regression)/runs/regr_$(test_info)_run_$$n ; \
+			cd $(REGRESS_DIR)/$(current_regression)/runs/regr_$(test_info)_run_$$n ; \
+			$(SIM) -q $(INCDIRS) $(PACKAGES) $(OPTIONS) $(COVERAGE_OPTIONS) $(DEBUG_OPTIONS) +UVM_TESTNAME=$(test_info) > /dev/null; \
+			echo "`grep 'SVSEED set randomly from command line:' ./xrun.log | sed 's/^.*: //'`" > $(REGRESS_DIR)/.tmp_seed_info_file; \
+			mv ../`pwd . | sed 's/^.*\///'` ../`pwd . | sed 's/^.*\///'`_seed_`cat $(REGRESS_DIR)/.tmp_seed_info_file`; \
+			cd $(BASE_DIR)/makefile ; \
+		done; \
+	done <"$(REGRESS_DIR)/.tmp_no_empty_lines.vsif"
+endef
+
+#------------------------------
+# Setting default target
+#------------------------------
+.DEFAULT_GOAL := help
+
+#------------------------------
+# targets
+#------------------------------
+run_gui : 
+	$(SIM) $(INCDIRS) $(PACKAGES) $(OPTIONS) $(RUN_TCL) $(COVERAGE_OPTIONS) $(DEBUG_OPTIONS) +UVM_TESTNAME=$(TEST_NAME) -gui
+
+run_batch : 
+	$(SIM) $(INCDIRS) $(PACKAGES) $(OPTIONS) $(RUN_TCL) $(COVERAGE_OPTIONS) $(DEBUG_OPTIONS) +UVM_TESTNAME=$(TEST_NAME)
+    
+clean :	
+	rm -rf INCA* *.key *.log *.diag waves* cov_work *.err .simvis* *.history
+
+clean_regr :	
+	rm -rf $(REGRESS_DIR)
+
+run_regr :
+	$(call func_run_regression,$(TEST_LIST_PATH)/$(TEST_LIST).vsif)
+	@echo
+	@echo "FINISHED RUNNING TESTS"
+	@$(BASE_DIR)/makefile/chk_regr_result.sh $(REGRESS_DIR)/$(current_regression)
+	@echo
+	@echo "REGRESSION RESULT LOG LOCATION:"
+	@echo "$(REGRESS_DIR)/$(current_regression)/regression_result.log"
+	@echo
+	@echo "MERGING COVERAGE..."
+	@imc -nostdout -execcmd "merge $(REGRESS_DIR)/$(current_regression)/runs/regr_*/cov_work/scope/test* -out $(REGRESS_DIR)/$(current_regression)/regr_coverage -overwrite"
+	@imc -nostdout -execcmd "load -run $(REGRESS_DIR)/$(current_regression)/regr_coverage; report_metrics -out $(REGRESS_DIR)/$(current_regression)/regr_coverage_report -detail -both -kind expand -overwrite"
+	@rm imc.* mdv.log
+	@echo
+	@echo "MERGING COVERAGE DONE. COVERAGE REPORT LOCATION:"
+	@echo "For IMC     : $(REGRESS_DIR)/$(current_regression)/regr_coverage"
+	@echo "For FIREFOX : $(REGRESS_DIR)/$(current_regression)/regr_coverage_report/index.html"
+	@echo
+	@echo "**********************************************************"
+	@echo "*   REGRESSION FINISHED:  $(current_regression)"
+	@echo "**********************************************************"
+	@echo
+	@rm $(REGRESS_DIR)/.tmp_file .tmp_time_file $(REGRESS_DIR)/.tmp_no_empty_lines.vsif $(REGRESS_DIR)/.tmp_seed_info_file
+
+help :
+	@echo ""
+	@echo "**********************************************************"
+	@echo "*                 MAKEFILE HELP MENU"
+	@echo "**********************************************************"
+	@echo "  Usage:"
+	@echo "          make [Target1 Target2 Target3 ...] [Variable1=<set_value> Variable2=<set_value> Variable3=<set_value> ...]"
+	@echo ""
+	@echo "  Targets:"
+	@echo "          help         - Opens help menu. Help menu will also be opened if no target is specified"
+	@echo "          run_batch    - Run simulation in BATCH mode"
+	@echo "          run_gui      - Run simulation in GUI mode"
+	@echo "          run_regr     - Run regression using tests from *.vsif file"
+	@echo "          clean        - Remove all simulation files"
+	@echo "          clean_regr   - Remove all regression files"
+	@echo ""
+	@echo "  Variables:"
+	@echo "          PROJECT_NAME - Current name of the project/UVC"
+	@echo "                         Current Value: $(PROJECT_NAME)"
+	@echo "          BASE_DIR     - Base directory of project/UVC"
+	@echo "                         Current Value: $(BASE_DIR)"
+	@echo "          TEST_NAME    - Name of the test to be runed"
+	@echo "                         Current Value: $(TEST_NAME)"
+	@echo "          TOP_FILE     - Location and name of test-bench file"
+	@echo "                         Current Value: $(TOP_FILE)"
+	@echo "          SEED         - Test seed number"
+	@echo "                         Current Value: $(SEED)"
+	@echo "          VERBOSITY    - Message verbosity level"
+	@echo "                         Current Value: $(VERBOSITY)"
+	@echo "          TCL_FILE     - Name of TCL file used for simulation"
+	@echo "                         Current Value: $(TCL_FILE)"
+	@echo "          TEST_LIST    - Absolute path to and name of VSIF file"
+	@echo "                         Current Value: $(TEST_LIST)"
+	@echo "          REGRESS_DIR  - Absolute path to and name of regression results folder"
+	@echo "                         Current Value: $(REGRESS_DIR)"
+	@echo "**********************************************************"
+	@echo ""
+

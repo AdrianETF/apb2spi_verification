@@ -1,0 +1,55 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : spi_uvc_cov.sv
+// Developer  : Adrian Milakovic
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef SPI_UVC_COV_SV
+`define SPI_UVC_COV_SV
+
+class spi_uvc_cov extends uvm_subscriber #(spi_uvc_item);
+  
+  // registration macro
+  `uvm_component_utils(spi_uvc_cov)
+  
+  // configuration reference
+  spi_uvc_agent_cfg m_cfg;
+  
+  // coverage fields 
+  bit m_signal_value_cov;
+  
+  // coverage groups
+  covergroup spi_uvc_cg;
+    option.per_instance = 1;
+
+    cp_signal_value : coverpoint m_signal_value_cov {
+      //option.weight = 0;
+    }
+  endgroup : spi_uvc_cg
+  
+  // constructor
+  extern function new(string name, uvm_component parent);
+  // analysis implementation port function
+  extern virtual function void write(spi_uvc_item t);
+
+endclass : spi_uvc_cov
+
+// constructor
+function spi_uvc_cov::new(string name, uvm_component parent);
+  super.new(name, parent);
+  spi_uvc_cg = new();
+endfunction : new
+
+// analysis implementation port function
+function void spi_uvc_cov::write(spi_uvc_item t);
+  m_signal_value_cov = t.m_signal_value;
+  spi_uvc_cg.sample();
+endfunction : write
+
+`endif // SPI_UVC_COV_SV

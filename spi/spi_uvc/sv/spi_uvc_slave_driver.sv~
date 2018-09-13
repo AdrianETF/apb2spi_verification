@@ -1,0 +1,100 @@
+//------------------------------------------------------------------------------
+// Copyright (c) 2018 Elsys Eastern Europe
+// All rights reserved.
+//------------------------------------------------------------------------------
+// File name  : spi_uvc_slave_driver.sv
+// Developer  : Jovana Toroman
+// Date       : 
+// Description: 
+// Notes      : 
+//
+//------------------------------------------------------------------------------
+
+`ifndef SPI_UVC_SLAVE_DRIVER_SV
+`define SPI_UVC_SLAVE_DRIVER_SV
+
+class spi_uvc_slave_driver #(SLAVE_NUM = 0) extends uvm_driver #(spi_uvc_item);
+  
+  // registration macro
+  `uvm_component_utils(spi_uvc_slave_driver)
+  
+  // virtual interface reference
+  virtual interface spi_uvc_if m_vif;
+  
+  // configuration reference
+  spi_uvc_agent_cfg m_cfg;
+  
+  // request item
+  REQ m_req;
+  int i;
+
+  // constructor
+  extern function new(string name, uvm_component parent);
+  // build phase
+  extern virtual function void build_phase(uvm_phase phase);
+  // run phase
+  extern virtual task run_phase(uvm_phase phase);
+  // process item
+  extern virtual task process_item(spi_uvc_item item);
+  extern virtual task stop_driving(spi_uvc_item item);
+
+endclass : spi_uvc_slave_driver
+
+// constructor
+function spi_uvc_slave_driver::new(string name, uvm_component parent);
+  super.new(name, parent);
+endfunction : new
+
+// build phase
+function void spi_uvc_slave_driver::build_phase(uvm_phase phase);
+  super.build_phase(phase);
+endfunction : build_phase
+
+// run phase
+task spi_uvc_slave_driver::run_phase(uvm_phase phase);
+  super.run_phase(phase);
+
+  // init signals
+  m_vif.MISO<= 1'b0;
+  
+  forever begin
+    seq_item_port.get_next_item(m_req);
+    fork
+    begin
+    process_item(m_req);
+    end
+    begin
+    stop_driving(m_req);
+    end
+    join_any
+    disable fork;
+    seq_item_port.item_done();
+  end
+endtask : run_phase
+
+// process item
+task spi_uvc_slave_driver::process_item(spi_uvc_item item);
+  // print item
+  `uvm_info(get_type_name(), $sformatf("Item to be driven: \n%s", item.sprint()), UVM_HIGH)
+  i=0;
+
+  // wait until reset is de-asserted
+  wait (m_vif.reset_n == 1); 
+    @(negedge(m_vif.SS_N[SLAVE_NUM]))
+        m_vif.MISO<= item.transmit_buffer[i++];
+	forever
+        begin
+	   @(negedge(m_vif.SCK) iff m_vif.SS_N[SLAVE_NUM] == 1'b0)
+	      m_vif.MISO<= item.transmit_buffer[i++];
+	end 
+endtask : process_item
+
+
+task spi_uvc_slave_driver::stop_driving(spi_uvc_item item);
+  wait (m_vif.reset_n == 1);
+    @(posedge(m_vif.SS_N[SLAVE_NUM]) )
+	i=0;
+	m_vif.MISO<= 1'b0;
+endtask : stop_driving
+
+`endif // SPI_UVC_SLAVE_DRIVER_SV
